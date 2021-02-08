@@ -15,14 +15,17 @@ class _Generator:
     def batch_sample(self):
         def generator():
             i = 0
-            with _h5py.File(self.path, 'r') as df:
-                num_img = df[self.label_name].shape[0]
+            with _h5py.File(self.file, 'r') as df:
+                num_img = df[self.finding].shape[0]
             while True:
-                with _h5py.File(self.path, 'r') as df:
+                if i + self.batch_size > num_img:
+                    i=0
+                with _h5py.File(self.file, 'r') as df:
                     img = df['images'][i:i+self.batch_size]
-                    label = df[self.label_name][i:i+self.batch_size]
+                    label = df[self.finding][i:i+self.batch_size]
                     yield img, label
-                i = i + self.batch_size if i + self.batch_size < num_img else 0
+                i = i + self.batch_size
+                
         self.generator = generator()
         
     def random_sample(self):
@@ -94,7 +97,8 @@ def _apply_transform(batch, label, augmentation):
     batch = _tfa.image.translate(batch, translations = translate, interpolation="BILINEAR")
     return batch, label
 
-def make_generator(path, batch_size, label_name, sampling, augmentation, img_shape):          
+
+def make_generator(path, batch_size, label_name, sampling, augmentation, img_shape, partition):          
     _gen = _Generator(path ,batch_size, label_name, sampling)
     
     data = _tf.data.Dataset.from_generator(
@@ -102,4 +106,7 @@ def make_generator(path, batch_size, label_name, sampling, augmentation, img_sha
         output_types = ((_tf.float32), (_tf.float32)),
         output_shapes = ((batch_size, *img_shape), (batch_size,)) )
 
-    return data.map(lambda batch, label: _apply_transform(batch, label, augmentation) )
+    if partition == 'train':
+        return data.map(lambda batch, label: _apply_transform(batch, label, augmentation) )
+    else:
+        return data

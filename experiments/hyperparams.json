@@ -1,0 +1,9 @@
+{
+"network": "inceptionv3",
+"learning_rate": 1e-6,
+"decay": 1e-7,
+"dropout": 0.2,
+"outputs": 1,
+"epochs": 2,
+"train_mode": "ft"
+}
