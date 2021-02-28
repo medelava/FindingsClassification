@@ -1,19 +1,22 @@
 # importar clase generator y clase convnnet
 #import generator, convnet, logger
+#%% 
 import argparse
 import json 
 import numpy as np
 #
 import tensorflow as tf
-import h5py
-from PIL import Image
+
 from retfindings.datasets.generator import make_generator
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from retfindings.models.convnet import CNNFindings
-
-
-
-def make_model(network, learning_rate, decay, dropout, img_shape, outputs, epochs, train_mode):
+from logger2 import Logger
+from utils import augmentation_func, calculate_steps, callbacks, image_from_generator, features_extraction
+from classifiers import GP_rbf_classifier, svm
+from inspect import getmembers, isfunction
+import classifiers
+from logger import save_metrics
+#%% 
+def make_model(**kwargs):
     
     """
     A model is build using one of the following options:
@@ -45,8 +48,11 @@ def make_model(network, learning_rate, decay, dropout, img_shape, outputs, epoch
         model : keras model
             compiled keras model.
     """
-    
    
+    img_shape = kwargs["img_shape"]
+    network = kwargs['network']
+    
+
     if network == 'inceptionv3':
         base_model = tf.keras.applications.InceptionV3(weights = 'imagenet', 
                                                        include_top = False,
@@ -73,24 +79,20 @@ def make_model(network, learning_rate, decay, dropout, img_shape, outputs, epoch
                                                     input_shape=img_shape,
                                                     pooling='avg'
                                                     )
-
-    model = CNNFindings(base_model, outputs)
-    input_tensor=tf.keras.Input(shape=img_shape)
-    model(input_tensor)
+    input_tensor = tf.keras.Input(shape = img_shape)
+    model = CNNFindings(base_model, kwargs["outputs"])
+    predictions = model(input_tensor) 
+    features = model.features_extraction(input_tensor)
+    #model(img_shape)
     
-    
-    optimizer= tf.keras.optimizers.RMSprop(learning_rate=learning_rate, decay=decay)
-
-    model.compile(
-        loss=tf.keras.losses.BinaryCrossentropy(),
-        optimizer=optimizer,
-        metrics=['accuracy', tf.keras.metrics.AUC()]
-    )
-    
-    return model
+    #return model
+    return {'full_model': model, 
+            'features_extractor': tf.keras.Model(inputs = [input_tensor], outputs = [features])}
+    #return {'full_model': tf.keras.Model(inputs = [input_tensor], outputs = [predictions]), 
+    #        'features_extractor': }
 
 
-def make_datasets(path_train, path_val, path_test, batch_size, label_name, sampling, augmentation, img_shape):
+def make_datasets(augmentation, **kwargs):
     """
     Builds tf dataset for training, validation and test partitions from .hdf5 files.
     
@@ -120,9 +122,17 @@ def make_datasets(path_train, path_val, path_test, batch_size, label_name, sampl
     val_ds : dataset
         tf dataset for the validation examples.
     test_ds : dataset
-        tf dataset for the test examples.
+        tf dataset for the test exafeatures(model, train_ds, num_img, batch_size)mples.
     """
     
+    
+    path_train = kwargs["path_train"]
+    path_val = kwargs["path_val"]
+    path_test = kwargs["path_test"]
+    batch_size = kwargs["batch_size"] 
+    label_name = kwargs["label_name"] 
+    sampling = kwargs["sampling"]
+    img_shape = kwargs["img_shape"]
     
     train_ds = make_generator(path_train, batch_size, label_name, sampling, augmentation, img_shape, 'train')
     val_ds = make_generator(path_val, batch_size, label_name, sampling, augmentation, img_shape, 'validation')
@@ -132,44 +142,10 @@ def make_datasets(path_train, path_val, path_test, batch_size, label_name, sampl
 
 # guardar curva con logger
 
-def callbacks(model_path, file_name): 
-    """
-    Returns two callbacks, model checlpoint and eaerlystopping, to be used during training. 
-    
-    Parameters
-    ----------
-        model_path : str
-            path to save the trained model weights.
-        filename : str
-            name of the .hdf5 weights file.
-            
-    Returns
-    -------
-    checkpoint
-        callback to save the best model based on the specified monitor.
-    early stop
-        earlystopping callback.
-    """
-    
-    checkpoint = ModelCheckpoint(model_path + file_name, 
-                                 monitor = 'val_loss', 
-                                 verbose = 1, 
-                                 save_best_only = True, 
-                                 mode = 'auto')
 
-    early_stop = EarlyStopping(monitor = 'val_loss', 
-                               min_delta = 0, 
-                               patience = 10, 
-                               verbose = 1, 
-                               mode = 'auto', 
-                               baseline = None, 
-                               restore_best_weights = True)
-    return checkpoint, early_stop
-
-    
 
 def transfer_learning(model, train_generator, val_generator, train_steps, 
-                      val_steps, model_path,  **kwargs):
+                      val_steps, callback_params, **kwargs):
     """
     Trains the top model, keepping the base model layers freezed, which are only used as feature extractors. 
     
@@ -200,11 +176,23 @@ def transfer_learning(model, train_generator, val_generator, train_steps,
         information of the training process.
     """
     
+    # model.layers[1].freeze()
     model.freeze()
     
     file_name = '{}_tl_{}.hdf5'. format(kwargs['label_name'], np.random.random())
-    checkpoint, early_stop = callbacks(model_path, file_name)    
+    checkpoint, early_stop = callbacks(kwargs['model_path'], file_name, callback_params)    
+
+
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate = kwargs["learning_rate"],
+                                            decay = kwargs["decay"])
     
+    model.compile(
+        loss = tf.keras.losses.BinaryCrossentropy(),
+        optimizer = optimizer,
+        metrics = ['accuracy', tf.keras.metrics.AUC()]
+    )
+     
+     
     history = model.fit(
         train_generator,
         steps_per_epoch = train_steps,
@@ -215,11 +203,11 @@ def transfer_learning(model, train_generator, val_generator, train_steps,
         #class_weight=d_class_weights
     )
     
-    return model, history
+    return model, history, file_name
 
 
 def fine_tuning(model, train_generator, val_generator, train_steps, 
-                val_steps, model_path, **kwargs):
+                val_steps, callback_params, **kwargs):
     """
     Trains the top model, keepping the base model layers freezed, which are only used as feature extractors. 
     
@@ -250,10 +238,25 @@ def fine_tuning(model, train_generator, val_generator, train_steps,
         information of the training process.
     """
     
-    model.unfreeze()
+    if kwargs['ft_mode'] == 'all':
+        #model.layers[1].unfreeze()
+        model.unfreeze()
+    else:
+        for layer in model.layers[0].layers[:kwargs['num_non_trainable']]:
+            layer.trainable = False
     
     file_name = '{}_ft_{}.hdf5'. format(kwargs['label_name'], np.random.random())
-    checkpoint, early_stop = callbacks(model_path, file_name)    
+    checkpoint, early_stop = callbacks(kwargs['model_path'], file_name, callback_params)    
+    
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate = kwargs["learning_rate"],
+                                            decay = kwargs["decay"])
+    
+    model.compile(
+        loss = tf.keras.losses.BinaryCrossentropy(),
+        optimizer = optimizer,
+        metrics = ['accuracy', tf.keras.metrics.AUC()]
+    )
+         
     
     history = model.fit(
         train_generator,
@@ -265,123 +268,84 @@ def fine_tuning(model, train_generator, val_generator, train_steps,
         #class_weight=d_class_weights
     )
     
-    return model, history
-
-
-def image_from_generator(dataset):  
-    """
-    Shows an image from the tf dataset. 
-    
-    Parameters
-    ----------
-    dataset : tf data dataset
-        tf data dataset of images.
-            
-    Returns
-    -------
-    shows an image stored in the dataset.
-    """
-    
-    img = next(iter(dataset))
-    imagen=img[0].numpy()
-    formatted = (imagen * 255 / np.max(imagen)).astype('uint8')
-    img = Image.fromarray(formatted[0], 'RGB')
-    img.show()
-
-
-def calculate_steps(**kwargs):
-    """
-    Calculate steps for trianing, validation and test
-    
-    Parameters
-    ----------
-    kwargs['path_train'] : str
-         path of hdf5 file with training images.
-    kwargs['path_val'] : str
-         path of hdf5 file with validation images.
-    kwargs['path_test'] : str
-         path of hdf5 file with test images.
-         
-    Returns
-    -------
-    number of steps for training, validation and test
-    """
-    
-    with h5py.File(kwargs['path_train'], 'r') as df:
-        num_train = df[kwargs['label_name']][:].shape[0]
-        
-    with h5py.File(kwargs['path_val'], 'r') as df:
-        num_val = df[kwargs['label_name']][:].shape[0]
-        
-    with h5py.File(kwargs['path_test'], 'r') as df:
-        num_test = df[kwargs['label_name']][:].shape[0]
-        
-    return num_train//kwargs['batch_size'], num_val//kwargs['batch_size'], num_test//kwargs['batch_size']
+    return model, history, file_name
 
 
 
-if __name__=='__main__':
-    # parameters not included in json
-    model_path = "/home/mder/repositories/FindingsClassification/retfindings/models/"
-    augmentation = {"preprocessing_function": lambda i:i, 
-                    "apply":False,
-                    "random_brightness": {"max_delta": 0.5},
-                    "random_contrast": {"lower":0.6, "upper":1},
-                    "random_hue": {"max_delta": 0.1},
-                    "random_saturation": {"lower": 0.6, "upper":1},
-                    "random_rotation": {"minval": 0, "maxval": 2*np.pi},
-                    "horizontal_flip": True, "vertical_flip": True,
-                    "rotation_range": {"minval": -0.3, "maxval": 0.3},
-                    "width_shift_range": {"minval": -2, "maxval": 2},
-                    "height_shift_range": {"minval": -2, "maxval": 2},}
-    
-    
-    
-    # argparse
+
+
+if __name__=='__main__':   
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_info", type=str, default="data_info.json")
     parser.add_argument("--hyperparams", type=str, default="hyperparams.json")
+    parser.add_argument("--callbacks", type=str, default="callbacks.json")
     args = parser.parse_args()
     
- 
     # read parameters from json
+    with open(args.callbacks, "r") as f:
+        callback_params = json.load(f)
+
     with open(args.data_info, "r") as f:
         data_info = json.load(f)
         
     with open(args.hyperparams, "r") as f:
         hyperparams = json.load(f)
-   
-        
-    print('BBBatchsize', data_info['batch_size'])
-   
     
-   
+    hyperparams = augmentation_func(hyperparams)
+
     # model definition
-    model = make_model(img_shape = data_info['img_shape'], **hyperparams)
-    train_ds, val_ds, test_ds = make_datasets(**data_info, augmentation=augmentation)
-    image_from_generator(train_ds)
+    models = make_model(**data_info, **hyperparams)
+#%% 
+    train_ds, val_ds, test_ds = make_datasets(augmentation=hyperparams["augmentation"], **data_info)
     train_steps, val_steps, test_steps = calculate_steps(**data_info)
     
+    
     # train the model using transfer learning 'tf' or fine tunning 'ft'
-    if hyperparams["train_mode"] == 'tf':
-        model, history = transfer_learning(model, 
+    if hyperparams["train_mode"] == 'tl':
+        model, history, file_name = transfer_learning(models['full_model'], 
                                            train_ds, 
                                            val_ds, 
                                            train_steps, 
                                            val_steps,
-                                           model_path,
+                                           callback_params,
                                            **hyperparams,
                                            **data_info)
     else:
-        model, history = fine_tuning(model, 
+        
+        model, history, file_name = fine_tuning(models['full_model'], 
                                     train_ds, 
                                     val_ds, 
                                     train_steps, 
                                     val_steps,
-                                    model_path,
+                                    callback_params,
                                     **hyperparams,
                                     **data_info)
-
+#%% 
+    num_img = 50
+    batch_size=3
+    
+    train_features, train_labels = features_extraction(models['features_extractor'], train_ds, num_img, batch_size)
+    val_features, val_labels = features_extraction(models['features_extractor'], train_ds, num_img, batch_size)
+    
+    train_features = train_features + val_features
+    train_labels = train_labels + val_labels
+    test_features, test_labels = features_extraction(models['features_extractor'], train_ds, num_img, batch_size)
+    
+    models_names = getmembers(classifiers, isfunction)
+#%%     
+    classifiers = {}
+    for name, function in models_names[:1]:
+        print(name)
+        classifiers[name] = function()
+        classif = function().fit(train_features, train_labels)
+        save_results = Logger('datasetname')
+        save_results(X_test=test_features, y_test=test_labels, model=classif, network_weights_name = file_name, clasfier=name, **data_info, **hyperparams)
+        #save_metrics(test_features, test_labels, model=classif, network_weights_name = file_name, clasfier=name, **data_info, **hyperparams)
+        #network, model, results_path, test_hdf5, finding, warmup_lr, warmup_epochs, warmup_decay, train_lr, train_epochs, train_decay, history
+     
+        
+    #gp = GP_rbf_classifier(features, labels)
+    #svm= smv(features, labels)
     #logger.save_results(model)
 
 

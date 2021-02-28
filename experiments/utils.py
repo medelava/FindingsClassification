@@ -89,12 +89,12 @@ def callbacks(model_path, file_name, callback_params):
 
 def features_extraction(model, train_ds, num_img, batch_size):
     # tf.keras.models.Model(inputs=model.input, outputs=model.get_layer('inception_v3').layers[-1].output)
-    model_notop = _tf.keras.models.Model(inputs=model.input, outputs=model.layers[-4].get_output_at(0))
+    #model_notop = _tf.keras.models.Model(inputs=model.input, outputs=model.layers[-4].get_output_at(0))
     features = []
     labels = []
     N = np.round(num_img/batch_size)
     for X_batch, y_batch in train_ds.take(N):
-        batch_features = model_notop.predict(X_batch)
+        batch_features = model.predict(X_batch)
         features.extend(batch_features)
         labels.extend(y_batch.numpy())
     return features, labels
