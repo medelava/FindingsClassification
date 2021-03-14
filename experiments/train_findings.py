@@ -4,17 +4,20 @@
 import argparse
 import json 
 import numpy as np
-#
-import tensorflow as tf
 
+import tensorflow as tf
+#%% 
 from retfindings.datasets.generator import make_generator
 from retfindings.models.convnet import CNNFindings
-from logger2 import Logger
-from utils import augmentation_func, calculate_steps, callbacks, image_from_generator, features_extraction
-from classifiers import GP_rbf_classifier, svm
+from logger import Logger
+from utils import augmentation_func, calculate_steps, callbacks, features_extraction, image_from_generator
 from inspect import getmembers, isfunction
+from sklearn.model_selection import GridSearchCV
+from sklearn import preprocessing
 import classifiers
-from logger import save_metrics
+from sklearn.gaussian_process.kernels import RBF as _RBF
+from sklearn.gaussian_process.kernels import WhiteKernel as _WhiteKernel
+from sklearn.gaussian_process.kernels import Matern as _Matern
 #%% 
 def make_model(**kwargs):
     
@@ -192,7 +195,9 @@ def transfer_learning(model, train_generator, val_generator, train_steps,
         metrics = ['accuracy', tf.keras.metrics.AUC()]
     )
      
-     
+    print(model.input)
+    
+    
     history = model.fit(
         train_generator,
         steps_per_epoch = train_steps,
@@ -272,8 +277,6 @@ def fine_tuning(model, train_generator, val_generator, train_steps,
 
 
 
-
-
 if __name__=='__main__':   
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_info", type=str, default="data_info.json")
@@ -295,8 +298,14 @@ if __name__=='__main__':
 
     # model definition
     models = make_model(**data_info, **hyperparams)
-#%% 
+
     train_ds, val_ds, test_ds = make_datasets(augmentation=hyperparams["augmentation"], **data_info)
+     
+    image_from_generator(train_ds)
+  
+    
+    
+    
     train_steps, val_steps, test_steps = calculate_steps(**data_info)
     
     
@@ -310,6 +319,8 @@ if __name__=='__main__':
                                            callback_params,
                                            **hyperparams,
                                            **data_info)
+        
+        
     else:
         
         model, history, file_name = fine_tuning(models['full_model'], 
@@ -320,7 +331,9 @@ if __name__=='__main__':
                                     callback_params,
                                     **hyperparams,
                                     **data_info)
-#%% 
+
+
+
     num_img = 50
     batch_size=3
     
@@ -331,15 +344,64 @@ if __name__=='__main__':
     train_labels = train_labels + val_labels
     test_features, test_labels = features_extraction(models['features_extractor'], train_ds, num_img, batch_size)
     
+    scaler = preprocessing.StandardScaler().fit(train_features)
+    
+    train_scaled = scaler.transform(train_features)
+    test_scaled = scaler.transform(test_features)
+    
     models_names = getmembers(classifiers, isfunction)
+
 #%%     
-    classifiers = {}
-    for name, function in models_names[:1]:
-        print(name)
-        classifiers[name] = function()
-        classif = function().fit(train_features, train_labels)
+    
+    lower_ls = hyperparams["lower length_scale bound"]
+    upper_ls = hyperparams["upper length_scale bound"]
+    lower_nl = hyperparams["lower noise_level"]
+    upper_nl = hyperparams["upper noise_level"]
+    
+    ls_samples = np.random.uniform(
+        lower_ls, upper_ls, hyperparams["num_samples"])
+    nl_samples = np.random.uniform(
+        lower_nl, upper_nl, hyperparams["num_samples"])
+    
+    ls_nl = np.vstack((ls_samples, nl_samples)).T
+    scores = ["roc_auc"]
+    
+    param_grid = [{
+                    "kernel": [
+                        1.0 * _RBF(
+                            length_scale=i, 
+                            length_scale_bounds=(lower_ls, upper_ls)) 
+                        + _WhiteKernel(noise_level=j, 
+                           noise_level_bounds=(lower_nl, upper_nl)) for i,j in ls_nl]
+                        
+                }, {
+                    "kernel": [1.0 * _Matern(length_scale=i, 
+                                             length_scale_bounds=(lower_ls, upper_ls)) \
+                                   + _WhiteKernel(noise_level=j, 
+                                                  noise_level_bounds=(lower_nl, upper_nl)) for i,j in ls_nl]
+                }]
+    
+#%%     
+    for name, make_clf in models_names[:1]:
+        classif = make_clf()
+        
+        clf = GridSearchCV(estimator=classif, param_grid=param_grid, cv=2,
+                       scoring="roc_auc")
+        clf.fit(train_scaled, train_labels)
+        classif  = clf.best_estimator_     
+        
+        #classif = function().fit(train_scaled, train_labels)
         save_results = Logger('datasetname')
-        save_results(X_test=test_features, y_test=test_labels, model=classif, network_weights_name = file_name, clasfier=name, **data_info, **hyperparams)
+        save_results(X_test=test_scaled, y_test=test_labels, model=classif, 
+                     network_weights_name = file_name, clasfier=name, **data_info,
+                     **hyperparams)
+        
+        
+        
+        
+        
+        
+        
         #save_metrics(test_features, test_labels, model=classif, network_weights_name = file_name, clasfier=name, **data_info, **hyperparams)
         #network, model, results_path, test_hdf5, finding, warmup_lr, warmup_epochs, warmup_decay, train_lr, train_epochs, train_decay, history
      
@@ -350,17 +412,18 @@ if __name__=='__main__':
 
 
 
+# regresion logistica se puede sacar incertidumbre seria desvacione standar de la prediccion, mirar si es igual en GP
+# explicar whitekernel y como funciona GP.
+# gradient boosting, random forest, SVM, logistic regression, capas densas. 
+# funcion de orden superior
+# pep 8, pypfleig
+# uuid4 para gusrdar modelos
+# parametros del optimizador
+# hyperparams["augmentation"]["preprocessing_function"](next(iter(train_ds))[0]).numpy().min()
 
 
 
 
-
-
-
-
-
-
-
-
+#"tf.keras.applications.inception_v3.preprocess_input()"
 
 
