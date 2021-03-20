@@ -1,0 +1,33 @@
+{
+"optimizer": "adam",
+"learning_rate": 1e-6,
+"momentum": 0.0,
+"beta_1": 0.9,
+"beta_2": 0.99,
+"epsilon": 1e-7,
+"network": "efficientnetb5",
+"dropout": 0.2,
+"outputs": 1,
+"epochs": 5,
+"epochs_warmup": 3,
+"train_mode": "tl",
+"ft_mode": "some",
+"num_non_trainable": 150,
+"warmup_lr": 1e-3, 
+"warmup_epochs": 2, 
+"warmup_decay": 1e-4,
+"augmentation": {"preprocessing_function": [], 
+                "apply": true,
+                "random_brightness": {"max_delta": 0.125},
+                "random_saturation": {"lower": 0.5, "upper":1.5},
+                "random_hue": {"max_delta": 0.2},
+                "random_contrast": {"lower":0.5, "upper":1.5},
+                "horizontal_flip": false, "vertical_flip": false
+                },
+"lower length_scale bound": 1e-2,
+"upper length_scale bound": 10,  
+"lower noise_level": 1e-10,
+"upper noise_level": 10,
+"num_samples": 2
+}
+

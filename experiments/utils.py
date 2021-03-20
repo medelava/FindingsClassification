@@ -11,13 +11,71 @@ from copy import deepcopy as _deepcopy
 import h5py
 from PIL import Image
 import numpy as np
+from retfindings.datasets.generator import make_generator
 
 
-def augmentation_func(params):
-    #TODOC
+def preprocess_network(params):
+#   #TODOC
     params = _deepcopy(params)
-    params["augmentation"]["preprocessing_function"] = lambda i: i
+    network = params["network"]
+    if network == 'inceptionv3':
+       params["augmentation"]["preprocessing_function"] = _tf.keras.applications.inception_v3.preprocess_input
+    elif network == 'resnet50':
+       params["augmentation"]["preprocessing_function"] = _tf.keras.applications.resnet.preprocess_input
+    elif network == 'efficientnetb5': 
+        params["augmentation"]["preprocessing_function"] = _tf.keras.applications.efficientnet.preprocess_input
+    elif network == 'xception':
+       params["augmentation"]["preprocessing_function"] = _tf.keras.applications.xception.preprocess_input
+    else:
+       raise NameError('no preprocessing function for this network')
     return params 
+
+
+def make_datasets(augmentation, **kwargs):
+    """
+    Builds tf dataset for training, validation and test partitions from .hdf5 files.
+    
+    Parameters
+    ----------
+    path_train : str
+        path of the .hdf5 file with the training images.
+    path_val : str
+        path of the .hdf5 file with the validation images.
+    path_test : str
+        path of the .hdf5 file with the test images.
+    batch_size : int
+        number of images per batch produces by the generator and save in the tf dataset.
+    label_name : str
+        name of the key for the lables to be used during training.
+    sampling : str
+        king of samplig to be used in the generator. The options are: 'rand', 'oversampling', 'batch'.
+    augmentation : dict
+        dictionary with the augmentation parametest to be used during training.
+    img_shape : list
+        shape of the mages to be used during training.
+        
+    Returns
+    -------
+    tran_ds : dataset
+        tf dataset for the training examples.
+    val_ds : dataset
+        tf dataset for the validation examples.
+    test_ds : dataset
+        tf dataset for the test exafeatures(model, train_ds, num_img, batch_size samples.
+    """
+    
+    path_train = kwargs["path_train"]
+    path_val = kwargs["path_val"]
+    path_test = kwargs["path_test"]
+    batch_size = kwargs["batch_size"] 
+    label_name = kwargs["label_name"] 
+    sampling = kwargs["sampling"]
+    img_shape = kwargs["img_shape"]
+    
+    train_ds = make_generator(path_train, batch_size, label_name, sampling, augmentation, img_shape, 'train')
+    val_ds = make_generator(path_val, batch_size, label_name, sampling, augmentation, img_shape, 'validation')
+    test_ds = make_generator(path_test, batch_size, label_name, sampling, augmentation, img_shape, 'test')
+    return train_ds, val_ds, test_ds
 
 
 def calculate_steps(**kwargs):

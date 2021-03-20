@@ -1,0 +1,9 @@
+{
+"kernel" : 1.0,
+"length_scale" : 1.0,
+"length_scale_bounds" : (1e-2, 1e3), 
+"noise_level" : 1e-5, 
+"noise_level_bounds" : (1e-10, 1e+1),
+"random_state" : None, 
+"n_restarts_optimizer" : 1
+ }
