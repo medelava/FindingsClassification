@@ -101,18 +101,3 @@ class Logger:
             #df.to_csv(f, header =['network', 'classifier', 'auc', 'recall', 'specificity', 'acc', 'f1_macro', 'f1_micro', 'network_weights_name', 'warmup_lr', 'warmup_epochs', 'warmup_decay', 'train_lr', 'train_epochs', 'train_decay'])
             df.to_csv(f, header = False, index=False)
      
-
-        _plt.plot(fpr, tpr, 'b', label = 'AUC = %0.4f' % auc)
-        _plt.legend(loc='lower right')
-        _plt.plot([0, 1], [0, 1],'r--')
-        _plt.xlim([0, 1])
-        _plt.ylim([0, 1])
-        _plt.ylabel('True Positive Rate', fontsize = 20.0)
-        _plt.xlabel('False Positive Rate', fontsize = 20.0)
-        _plt.xticks(fontsize=15, rotation=0)
-        _plt.yticks(fontsize=15, rotation=0)
-
-        _plt.savefig('{}/{}/AUC_{}_{}_{}_{}.png'.format(results_path + label_name, 'images', auc, network, clasfier, network_weights_name))  
-
-            
-    

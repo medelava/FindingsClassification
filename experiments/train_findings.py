@@ -154,7 +154,7 @@ if __name__=='__main__':
         
     with open(args.hyperparams, "r") as f:
         hyperparams = json.load(f)
-#%%      
+   
     hyperparams = preprocess_network(hyperparams)
     models = make_model(**data_info, **hyperparams)     # model definition
     train_ds, val_ds, test_ds = make_datasets(augmentation=hyperparams["augmentation"], **data_info)
