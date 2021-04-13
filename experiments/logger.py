@@ -9,7 +9,6 @@ Created on Fri Feb 26 18:45:50 2021
 import pandas as _pd
 import os as _os
 import numpy as _np
-import matplotlib.pyplot as _plt
 from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, f1_score 
 import csv
 
@@ -89,7 +88,7 @@ class Logger:
         df = _pd.DataFrame([[network, clasfier, auc, recall, specificity, acc, f1_macro, f1_micro, network_weights_name, kwargs['optimizer'], kwargs['dropout'], kwargs['learning_rate'], kwargs['epochs']]])
     
         if not _os.path.exists('{}'.format(results_path + label_name + '/csv')):
-            _os.makedirs(results_path)
+            _os.makedirs(results_path + label_name + '/csv')
         
         
         with open('{}/{}_results.csv'.format(results_path + label_name + '/csv', label_name), 'a') as f:

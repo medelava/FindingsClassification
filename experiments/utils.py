@@ -9,7 +9,7 @@ import tensorflow as _tf
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from copy import deepcopy as _deepcopy
 import h5py
-from PIL import Image
+#from PIL import Image
 import numpy as np
 from retfindings.datasets.generator import make_generator
 

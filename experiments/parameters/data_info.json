@@ -2,10 +2,10 @@
 "path_train": "/home/mder/repositories/FindingsClassification/experiments/images_messidor2_goap_50.hdf5",
 "path_val": "/home/mder/repositories/FindingsClassification/experiments/images_messidor2_goap_50.hdf5",
 "path_test": "/home/mder/repositories/FindingsClassification/experiments/images_messidor2_goap_50.hdf5",
-"model_path": "/home/mder/repositories/FindingsClassification/retfindings/models/", 
+"model_path": "/home/mder/repositories/FindingsClassification/retfindings/models/weights/", 
 "results_path": "/home/mder/repositories/FindingsClassification/retfindings/reports/",
 "batch_size": 3,
-"label_name": "A",
+"label_name": "H",
 "sampling": "batch",
 "img_shape": [299,299,3]         
 }

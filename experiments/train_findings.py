@@ -158,7 +158,7 @@ if __name__=='__main__':
     hyperparams = preprocess_network(hyperparams)
     models = make_model(**data_info, **hyperparams)     # model definition
     train_ds, val_ds, test_ds = make_datasets(augmentation=hyperparams["augmentation"], **data_info)
-    image_from_generator(train_ds)
+    # image_from_generator(train_ds)
     train_steps, val_steps, test_steps = calculate_steps(**data_info)
    
     # train the model using transfer learning 'tf' or fine tunning 'ft'
@@ -201,13 +201,6 @@ if __name__=='__main__':
                      **hyperparams)
         
 
-# regresion logistica se puede sacar incertidumbre seria desvacione standar de la prediccion, mirar si es igual en GP
-# explicar whitekernel y como funciona GP.
-# gradient boosting, random forest, SVM, logistic regression, capas densas. 
-# funcion de orden superior
-# pep 8, pypfleig
-# uuid4 para gusrdar modelos
-# parametros del optimizador
 # hyperparams["augmentation"]["preprocessing_function"](next(iter(train_ds))[0]).numpy().min()
 
 
