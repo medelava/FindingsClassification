@@ -85,7 +85,7 @@ class Logger:
         fpr, tpr, threshold = roc_curve(y_true, y_pred_test)
         auc = roc_auc_score(y_true, y_pred_test)
         
-        df = _pd.DataFrame([[network, clasfier, auc, recall, specificity, acc, f1_macro, f1_micro, network_weights_name, kwargs['optimizer'], kwargs['dropout'], kwargs['learning_rate'], kwargs['epochs']]])
+        df = _pd.DataFrame([[network, clasfier, auc, recall, specificity, acc, f1_macro, f1_micro, network_weights_name, kwargs['optimizer'], kwargs['dropout'], kwargs['num_non_trainable'], kwargs['warmup_lr'], kwargs['warmup_epochs'], kwargs['learning_rate'], kwargs['epochs'], kwargs['beta_1'], kwargs['beta_2'], kwargs['epsilon']]])
     
         if not _os.path.exists('{}'.format(results_path + label_name + '/csv')):
             _os.makedirs(results_path + label_name + '/csv')
@@ -94,8 +94,7 @@ class Logger:
         with open('{}/{}_results.csv'.format(results_path + label_name + '/csv', label_name), 'a') as f:
             if f.tell() == 0:
                writer = csv.writer(f)
-               writer.writerow(['network', 'classifier', 'auc', 'recall', 'specificity', 'acc', 'f1_macro', 'f1_micro', 'network_weights_name', 'optimizer', 'dropout', 'train_lr', 'train_epochs'])
-    
+               writer.writerow(['network', 'classifier', 'auc', 'recall', 'specificity', 'acc', 'f1_macro', 'f1_micro', 'network_weights_name', 'optimizer', 'dropout', 'num_non_trainable', 'warmup_lr', 'warmup_epochs', 'train_lr', 'train_epochs', 'beta_1', 'beta_2', 'epsilon'])
     
             #df.to_csv(f, header =['network', 'classifier', 'auc', 'recall', 'specificity', 'acc', 'f1_macro', 'f1_micro', 'network_weights_name', 'warmup_lr', 'warmup_epochs', 'warmup_decay', 'train_lr', 'train_epochs', 'train_decay'])
             df.to_csv(f, header = False, index=False)

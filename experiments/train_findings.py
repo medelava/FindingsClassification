@@ -6,6 +6,16 @@ from retfindings.models.convnet import compile_model, make_model
 from logger import   Logger
 from utils import preprocess_network, calculate_steps, callbacks, image_from_generator, make_datasets
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+
+    except RuntimeError as e:
+        print(e)
+        
+        
 def transfer_learning(model, train_generator, val_generator, train_steps, 
                       val_steps, callback_params, **kwargs):
     """
@@ -47,8 +57,14 @@ def transfer_learning(model, train_generator, val_generator, train_steps,
 
     file_uuid = uuid.uuid4()
     file_name = '{}_tl_{}.hdf5'. format(kwargs['label_name'], file_uuid)
-    checkpoint, early_stop = callbacks(kwargs['model_path'], file_name, callback_params)    
-
+    
+    if hyperparams["train_mode"] == 'tl':
+        checkpoint, early_stop = callbacks(kwargs['model_path'], file_name, callback_params)    
+        my_callbacks = [checkpoint, early_stop]
+    elif hyperparams["train_mode"] =='ft':
+        my_callbacks = None
+        
+        
     if kwargs['optimizer'] == 'adam':
         optimizer = tf.keras.optimizers.Adam(learning_rate=kwargs["learning_rate"], 
                                              beta_1=kwargs["beta_1"],
@@ -66,8 +82,7 @@ def transfer_learning(model, train_generator, val_generator, train_steps,
         epochs = epochs, 
         validation_data = val_generator,
         validation_steps = val_steps,
-        callbacks = [checkpoint, early_stop],
-        #class_weight=d_class_weights
+        callbacks = my_callbacks
     )
     
     return model, history, file_name
@@ -109,6 +124,7 @@ def fine_tuning(model, train_generator, val_generator, train_steps,
         #model.layers[1].unfreeze()
         model.unfreeze()
     else:
+        model.unfreeze()
         for layer in model.layers[0].layers[:kwargs['num_non_trainable']]:
             layer.trainable = False
     
@@ -157,10 +173,11 @@ if __name__=='__main__':
    
     hyperparams = preprocess_network(hyperparams)
     models = make_model(**data_info, **hyperparams)     # model definition
+
     train_ds, val_ds, test_ds = make_datasets(augmentation=hyperparams["augmentation"], **data_info)
     # image_from_generator(train_ds)
     train_steps, val_steps, test_steps = calculate_steps(**data_info)
-   
+
     # train the model using transfer learning 'tf' or fine tunning 'ft'
     if hyperparams["train_mode"] == 'tl':
         model, history, file_name = transfer_learning(models['full_model'], 
@@ -172,6 +189,14 @@ if __name__=='__main__':
                                            **hyperparams,
                                            **data_info)
         
+        loss = history.history['loss']
+        val_loss = history.history['val_loss']
+        
+        training_data = loss.append(val_loss)
+        
+        with open('hist.json', 'w') as json_file:
+            json.dump(training_data, json_file)
+            
         save_results = Logger(dataset_name='messidor2')
         save_results(X_test=test_ds, y_true=[], model=model, 
                      network_weights_name = file_name, clasfier='multilayer perceptron', test_steps=test_steps, **data_info,
@@ -194,7 +219,15 @@ if __name__=='__main__':
                                     callback_params,
                                     **hyperparams,
                                     **data_info)
-
+        
+        loss = history.history['loss']
+        val_loss = history.history['val_loss']
+        
+        training_data = loss.append(val_loss)
+        
+        with open('hist.json', 'w') as json_file:
+            json.dump(training_data, json_file)
+            
         save_results = Logger('datasetname')
         save_results(X_test=test_ds, y_true=[], model=model, 
                      network_weights_name = file_name, clasfier='multilayer perceptron', test_steps=test_steps, **data_info,

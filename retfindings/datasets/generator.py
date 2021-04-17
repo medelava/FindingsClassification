@@ -142,7 +142,7 @@ class _Generator:
         while True:
             yield next(self.__generator)
 
-def _apply_transform(batch, label, augmentation): 
+def _apply_transform(batch, label, augmentation, partition): 
     """
     Applyes data augmentation over a batch of images.
     
@@ -156,29 +156,31 @@ def _apply_transform(batch, label, augmentation):
     """
         
 
-
-    batch = _tf.image.random_brightness(batch, **augmentation["random_brightness"])
-    batch = _tf.image.random_contrast(batch, **augmentation["random_contrast"])
-    batch = _tf.image.random_hue(batch, **augmentation["random_hue"])
-    batch = _tf.image.random_saturation(batch, **augmentation["random_saturation"])
-    
-    #random_angles = _tf.random.uniform(shape = (batch.shape[0], ), **augmentation["rotation_range"])
-    #batch = _tfa.image.transform(batch,
-    #                            _tfa.image.transform_ops.angles_to_projective_transforms(
-    #                            random_angles, _tf.cast(batch.shape[1], _tf.float32),
-    #                           _tf.cast(batch.shape[2], _tf.float32)),
-    #                            interpolation="BILINEAR")
-
-    #random_x = _tf.random.uniform(shape = (batch.shape[0], 1), **augmentation["width_shift_range"])
-    #random_y = _tf.random.uniform(shape = (batch.shape[0], 1), **augmentation["height_shift_range"])
-    #translate = _tf.concat([random_x, random_y], axis=1)
-    #batch = _tfa.image.translate(batch, translations = translate, interpolation="BILINEAR")
-    
-    if augmentation["horizontal_flip"]:
-        batch = _tf.image.random_flip_left_right(batch)
-    if augmentation["vertical_flip"]:
-        batch = _tf.image.random_flip_up_down(batch)
+    if partition == 'train':
+        batch = _tf.image.random_brightness(batch, **augmentation["random_brightness"])
+        batch = _tf.image.random_contrast(batch, **augmentation["random_contrast"])
+        batch = _tf.image.random_hue(batch, **augmentation["random_hue"])
+        batch = _tf.image.random_saturation(batch, **augmentation["random_saturation"])
         
+        #random_angles = _tf.random.uniform(shape = (batch.shape[0], ), **augmentation["rotation_range"])
+        #batch = _tfa.image.transform(batch,
+        #                            _tfa.image.transform_ops.angles_to_projective_transforms(
+        #                            random_angles, _tf.cast(batch.shape[1], _tf.float32),
+        #                           _tf.cast(batch.shape[2], _tf.float32)),
+        #                            interpolation="BILINEAR")
+    
+        #random_x = _tf.random.uniform(shape = (batch.shape[0], 1), **augmentation["width_shift_range"])
+        #random_y = _tf.random.uniform(shape = (batch.shape[0], 1), **augmentation["height_shift_range"])
+        #translate = _tf.concat([random_x, random_y], axis=1)
+        #batch = _tfa.image.translate(batch, translations = translate, interpolation="BILINEAR")
+        
+        if augmentation["horizontal_flip"]:
+            batch = _tf.image.random_flip_left_right(batch)
+        if augmentation["vertical_flip"]:
+            batch = _tf.image.random_flip_up_down(batch)
+    else:
+        pass
+    
     return augmentation["preprocessing_function"](batch), label
 
 
@@ -191,7 +193,5 @@ def make_generator(path, batch_size, label_name, sampling, augmentation, img_sha
         output_shapes = ((batch_size, *img_shape), (batch_size,)) 
         ) 
 
-    if partition == 'train':
-        return data.map(lambda batch, label: _apply_transform(batch, label, augmentation) )
-    else:
-        return data
+    return data.map(lambda batch, label: _apply_transform(batch, label, augmentation, partition) )
+    
