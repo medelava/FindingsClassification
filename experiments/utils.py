@@ -171,11 +171,12 @@ def image_from_generator(dataset):
     -------
     shows an image stored in the dataset.
     """
-    
+    from PIL import Image
     img = next(iter(dataset))
     imagen=img[0].numpy()
-    formatted = (imagen * 255 / np.max(imagen)).astype('uint8')
-    img = Image.fromarray(formatted[0], 'RGB')
+    print(imagen.max(), imagen.min())
+    #formatted = (imagen * 255 / np.max(imagen)).astype('uint8')
+    img = Image.fromarray(imagen.astype('uint8'), 'RGB')
     img.show()
 
 

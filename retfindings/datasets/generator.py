@@ -181,7 +181,8 @@ def _apply_transform(batch, label, augmentation, partition):
     else:
         pass
     
-    return augmentation["preprocessing_function"](batch), label
+    return batch
+    #return augmentation["preprocessing_function"](batch), label
 
 
 def make_generator(path, batch_size, label_name, sampling, augmentation, img_shape, partition):          

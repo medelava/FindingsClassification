@@ -5,7 +5,7 @@
 "beta_1": 0.9,
 "beta_2": 0.99,
 "epsilon": 1e-7,
-"network": "efficientnetb5",
+"network": "inceptionv3",
 "dropout": 0.2,
 "outputs": 1,
 "epochs": 2,
@@ -19,10 +19,10 @@
 "augmentation": {"preprocessing_function": [], 
                 "apply": true,
                 "random_brightness": {"max_delta": 0.125},
-                "random_saturation": {"lower": 0.5, "upper":1.5},
+                "random_saturation": {"lower": 0.8, "upper":1},
                 "random_hue": {"max_delta": 0.2},
-                "random_contrast": {"lower":0.5, "upper":1.5},
-                "horizontal_flip": false, "vertical_flip": false
+                "random_contrast": {"lower":0.8, "upper":1},
+                "horizontal_flip": false, "vertical_flip": false             
                 },
 "lower length_scale bound": 1e-2,
 "upper length_scale bound": 10,  

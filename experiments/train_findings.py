@@ -175,9 +175,9 @@ if __name__=='__main__':
     models = make_model(**data_info, **hyperparams)     # model definition
 
     train_ds, val_ds, test_ds = make_datasets(augmentation=hyperparams["augmentation"], **data_info)
-    # image_from_generator(train_ds)
+    image_from_generator(train_ds)
     train_steps, val_steps, test_steps = calculate_steps(**data_info)
-
+#%%
     # train the model using transfer learning 'tf' or fine tunning 'ft'
     if hyperparams["train_mode"] == 'tl':
         model, history, file_name = transfer_learning(models['full_model'], 

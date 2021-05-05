@@ -1,5 +1,5 @@
 { 
-"monitor": "val_loss", 
+"monitor": "val_auc", 
 "verbose": 1, 
 "save_best_only": true, 
 "mode": "auto",
