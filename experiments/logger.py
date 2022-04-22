@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Feb 26 18:45:50 2021
-
-@author: mder
-"""
-
 import pandas as _pd
 import os as _os
 import numpy as _np
@@ -14,7 +6,6 @@ import csv
 
 
 class Logger:
-    #TODOC
     def __init__(
             self,
             dataset_name = 'datasetname', 
@@ -32,11 +23,6 @@ class Logger:
         self.__metric_names = metric_names
         self.__make_dataframes()
         
-    
-   #def add(self, models, metrics, datasets):
-   #     self.__models = models
-   #     self.__metrics = metrics
-   #     self.__datasets = datasets
 
     def __make_dataframes(self):
         #TODOC

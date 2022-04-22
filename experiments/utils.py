@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Feb  8 14:14:05 2021
-
-@author: mder
-"""
 import tensorflow as _tf
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from copy import deepcopy as _deepcopy
@@ -15,7 +8,6 @@ from retfindings.datasets.generator import make_generator
 
 
 def preprocess_network(params):
-#   #TODOC
     params = _deepcopy(params)
     network = params["network"]
     if network == 'inceptionv3':

@@ -13,7 +13,6 @@ import numpy as np
 from keras.models import load_model
 
 def features_extraction(model_name, test_dir, image_size, batch_size):
-    print('entrooooooooooooo')
     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
     features = []
@@ -30,22 +29,16 @@ def features_extraction(model_name, test_dir, image_size, batch_size):
     model = keras.models.Model(inputs=model.inputs, outputs=x)
        
     for i in range(2):
-        print('inicio for')
         datadirs=test_dir+str(i)+'/'
         filenames=os.listdir(datadirs)
         num=len(filenames)
-        print('paso1', i)
         generator = ImageDataGenerator()
-        print('paso2', test_dir)
         generator_data=generator.flow_from_directory(directory=test_dir,target_size=(image_size,image_size),
                                              batch_size=batch_size,class_mode=None,classes=str(i))
-        print('after_generator', num, batch_size)
         predict=model.predict_generator(generator_data,steps=num/batch_size,verbose=1,workers=1)
-        print('acaaaaaaaaaaaaaaaa', i)
         y_true.extend(np.tile(i, predict.shape[0]))
         features.extend(predict)
     return features, y_true
-
 
 
 batch_size=3
@@ -57,6 +50,7 @@ test_dir='/home/mder/datasets/messidor2/dr_folders/grades/borrar/'
 
 model_name = 'vgg16_CAB_DDR.h5'
 train_features, train_labels = features_extraction(model_name, train_dir, image_size, batch_size)
+
 #%%
 test_features, test_labels = features_extraction(model_name, test_dir, image_size, batch_size)
 
